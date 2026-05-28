@@ -102,3 +102,5 @@ size.
 ## Reference to documentation
 
 - [Marketplace App Boilerplate](https://www.contentstack.com/docs/developers/developer-hub/marketplace-app-boilerplate/)
+
+//Supabase Connect
