@@ -108,7 +108,7 @@ export const createApp = async (authToken: string) => {
       authtoken: authToken,
     },
     data: {
-      name: `App Boilerplate ${Math.floor(Math.random() * 1000)}`,
+      name: `Supabase Connect ${Math.floor(Math.random() * 1000)}`,
       target_type: 'stack',
     },
   };
@@ -182,7 +182,7 @@ export const updateApp = async (authToken: string, appId: string) => {
             type: 'cs.cm.stack.config',
             meta: [
               {
-                name: `App Boilerplate _${Math.floor(Math.random() * 1000)}`,
+                name: `Supabase Connect _${Math.floor(Math.random() * 1000)}`,
                 path: '/app-configuration',
                 signed: false,
                 enabled: true,
@@ -193,7 +193,7 @@ export const updateApp = async (authToken: string, appId: string) => {
             type: 'cs.cm.stack.custom_field',
             meta: [
               {
-                name: `App Boilerplate _${Math.floor(Math.random() * 1000)}`,
+                name: `Supabase Connect _${Math.floor(Math.random() * 1000)}`,
                 path: '/custom-field',
                 signed: true,
                 enabled: true,
@@ -332,7 +332,7 @@ export const createContentType = async (authToken: string, extension_uid: Extens
             multiple: false,
           },
           {
-            display_name: 'App Boilerplate',
+            display_name: 'Supabase Connect',
             uid: 'text',
             data_type: 'json',
             extension_uid: extension_uid,

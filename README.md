@@ -1,4 +1,4 @@
-# Contentstack Marketplace App Boilerplate
+# Contentstack Marketplace Supabase Connect
 
 ## Provider
 
