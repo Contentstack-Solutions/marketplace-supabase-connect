@@ -41,7 +41,7 @@ export const MarketplaceAppProvider: React.FC<ProviderProps> = ({ children }) =>
         setAppSdk(appSdk);
         //updated Height of the Custom Field Iframe.
         appSdk.location.DashboardWidget?.frame?.disableAutoResizing();
-        await appSdk.location.CustomField?.frame?.updateHeight?.(450);
+        await appSdk.location.CustomField?.frame?.updateHeight?.(150);
         //updated Height and Width of the Field Modifier Iframe.
         appSdk.location.FieldModifierLocation?.frame?.disableAutoResizing();
         await appSdk.location.FieldModifierLocation?.frame?.updateDimension({ height: 380, width: 520 });

@@ -124,7 +124,7 @@ const CustomFieldExtension = () => {
   return (
     <div className="cf-container">
       <label className="cf-label" htmlFor="cf-select">
-        {tableName}
+        {`Select from ${tableName}`}
       </label>
 
       <div className="cf-select-wrapper">
