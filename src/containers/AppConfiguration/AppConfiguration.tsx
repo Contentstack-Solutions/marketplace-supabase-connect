@@ -12,10 +12,11 @@ const AppConfigurationExtension: React.FC = () => {
   const [supabaseAnonKey, setSupabaseAnonKey] = useState("");
   const [tableName, setTableName] = useState("");
 
-  const [testStatus, setTestStatus] = useState<Status>("idle");
-  const [testMessage, setTestMessage] = useState("");
-  const [saveStatus, setSaveStatus] = useState<Status>("idle");
-  const [saveMessage, setSaveMessage] = useState("");
+  const [connStatus, setConnStatus] = useState<Status>("idle");
+  const [connMessage, setConnMessage] = useState("");
+
+  const [tableStatus, setTableStatus] = useState<Status>("idle");
+  const [tableMessage, setTableMessage] = useState("");
 
   // Hydrate from saved config
   useEffect(() => {
@@ -24,21 +25,50 @@ const AppConfigurationExtension: React.FC = () => {
     setSupabaseUrl((saved?.supabaseUrl as string) || "");
     setSupabaseAnonKey((saved?.supabaseAnonKey as string) || "");
     setTableName((saved?.tableName as string) || "");
-    if (saved?.supabaseUrl && saved?.supabaseAnonKey && saved?.tableName) {
-      setTestStatus("success");
-      setTestMessage(`Using table "${saved.tableName}". Test connection to verify it's still reachable.`);
+    if (saved?.supabaseUrl && saved?.supabaseAnonKey) {
+      setConnStatus("success");
+      setConnMessage("Previously configured. Re-test if credentials changed.");
+    }
+    if (saved?.tableName) {
+      setTableStatus("success");
     }
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleTest = useCallback(async () => {
-    if (!supabaseUrl || !supabaseAnonKey || !tableName) {
-      setTestStatus("error");
-      setTestMessage("Please fill in all three fields before testing.");
+  const handleTestConnection = useCallback(async () => {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setConnStatus("error");
+      setConnMessage("Please fill in Project URL and Anon Key.");
       return;
     }
 
-    setTestStatus("loading");
-    setTestMessage("");
+    setConnStatus("loading");
+    setConnMessage("");
+
+    try {
+      const supabase = createClient(supabaseUrl.trim(), supabaseAnonKey.trim());
+      // Query a non-existent table; a 42P01 response confirms credentials are valid
+      const { error } = await supabase.from("__ping__").select("*").limit(1);
+
+      if (!error || error.code === "42P01") {
+        setConnStatus("success");
+        setConnMessage("Connection successful!");
+        setTableStatus("idle");
+        setTableMessage("");
+      } else {
+        setConnStatus("error");
+        setConnMessage(error.message);
+      }
+    } catch (err: unknown) {
+      setConnStatus("error");
+      setConnMessage((err as { message?: string })?.message ?? "Unknown error");
+    }
+  }, [supabaseUrl, supabaseAnonKey]);
+
+  const handleSearchTable = useCallback(async () => {
+    if (!tableName) return;
+
+    setTableStatus("loading");
+    setTableMessage("");
 
     try {
       const supabase = createClient(supabaseUrl.trim(), supabaseAnonKey.trim());
@@ -48,36 +78,20 @@ const AppConfigurationExtension: React.FC = () => {
         .limit(1);
 
       if (error) {
-        // 42P01 = table does not exist
         if (error.code === "42P01") {
-          setTestStatus("error");
-          setTestMessage(`Table "${tableName.trim()}" not found in the public schema. Check the name and try again.`);
+          setTableStatus("error");
+          setTableMessage(`Table "${tableName.trim()}" not found in the public schema.`);
         } else {
-          setTestStatus("error");
-          setTestMessage(error.message);
+          setTableStatus("error");
+          setTableMessage(error.message);
         }
         return;
       }
 
-      setTestStatus("success");
-      setTestMessage(`Connected! Table "${tableName.trim()}" is accessible.`);
-    } catch (err: unknown) {
-      setTestStatus("error");
-      setTestMessage((err as { message?: string })?.message ?? "Unknown error");
-    }
-  }, [supabaseUrl, supabaseAnonKey, tableName]);
+      setTableStatus("success");
+      setTableMessage("");
 
-  const handleSave = useCallback(async () => {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      setSaveStatus("error");
-      setSaveMessage("Project URL and Anon Key are required.");
-      return;
-    }
-
-    setSaveStatus("loading");
-    setSaveMessage("");
-
-    try {
+      // Auto-save when table is verified
       await Promise.resolve(
         setInstallationData({
           configuration: {
@@ -88,18 +102,9 @@ const AppConfigurationExtension: React.FC = () => {
           serverConfiguration: {},
         })
       );
-      setSaveStatus("success");
-      setSaveMessage(
-        tableName.trim()
-          ? "Configuration saved."
-          : "Credentials saved. Add a table name to activate the custom field."
-      );
-      setTimeout(() => setSaveStatus("idle"), 5000);
     } catch (err: unknown) {
-      setSaveStatus("error");
-      setSaveMessage(
-        `Save failed: ${(err as { message?: string })?.message ?? "Unknown error"}`
-      );
+      setTableStatus("error");
+      setTableMessage((err as { message?: string })?.message ?? "Unknown error");
     }
   }, [supabaseUrl, supabaseAnonKey, tableName, setInstallationData]);
 
@@ -113,8 +118,8 @@ const AppConfigurationExtension: React.FC = () => {
     );
   }
 
-  const canTest = !!supabaseUrl && !!supabaseAnonKey && !!tableName;
-  const canSave = !!supabaseUrl && !!supabaseAnonKey;
+  const canTestConn = !!supabaseUrl && !!supabaseAnonKey;
+  const canSearchTable = connStatus === "success" && !!tableName;
 
   return (
     <div className={styles.layoutContainer}>
@@ -148,8 +153,10 @@ const AppConfigurationExtension: React.FC = () => {
                   value={supabaseUrl}
                   onChange={(e) => {
                     setSupabaseUrl(e.target.value);
-                    setTestStatus("idle");
-                    setTestMessage("");
+                    setConnStatus("idle");
+                    setConnMessage("");
+                    setTableStatus("idle");
+                    setTableMessage("");
                   }}
                   placeholder="https://your-project.supabase.co"
                   autoComplete="off"
@@ -174,8 +181,10 @@ const AppConfigurationExtension: React.FC = () => {
                   value={supabaseAnonKey}
                   onChange={(e) => {
                     setSupabaseAnonKey(e.target.value);
-                    setTestStatus("idle");
-                    setTestMessage("");
+                    setConnStatus("idle");
+                    setConnMessage("");
+                    setTableStatus("idle");
+                    setTableMessage("");
                   }}
                   placeholder="sb_publishable_… or eyJhbGci…"
                   autoComplete="off"
@@ -187,68 +196,71 @@ const AppConfigurationExtension: React.FC = () => {
               <p>Found in Supabase → Settings → API. Both JWT and <code>sb_publishable_*</code> formats are supported.</p>
             </div>
           </div>
-        </div>
-
-        {/* ── Table ── */}
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Table</h3>
-
-          <div className={styles.configContainer}>
-            <div className={styles.infoContainerWrapper}>
-              <div className={styles.infoContainer}>
-                <label htmlFor="sb-table">Table Name</label>
-              </div>
-              <div className={styles.inputContainer}>
-                <input
-                  id="sb-table"
-                  type="text"
-                  value={tableName}
-                  onChange={(e) => {
-                    setTableName(e.target.value);
-                    setTestStatus("idle");
-                    setTestMessage("");
-                  }}
-                  placeholder="e.g. icsc_events"
-                  autoComplete="off"
-                  className={styles.fieldInput}
-                />
-              </div>
-            </div>
-            <div className={styles.descriptionContainer}>
-              <p>Exact PostgreSQL table name from the <code>public</code> schema. Rows from this table populate the custom field dropdown.</p>
-            </div>
-          </div>
 
           <button
             className={`${styles.btn} ${styles.btnConnect}`}
-            onClick={handleTest}
-            disabled={!canTest || testStatus === "loading"}
+            onClick={handleTestConnection}
+            disabled={!canTestConn || connStatus === "loading"}
           >
-            {testStatus === "loading" ? "Testing…" : "Test Connection"}
+            {connStatus === "loading" ? "Testing…" : "Test Connection"}
           </button>
 
-          {testMessage && (
-            <div className={`${styles.statusMessage} ${testStatus === "success" ? styles.msgSuccess : styles.msgError}`}>
-              {testMessage}
+          {connMessage && (
+            <div className={`${styles.statusMessage} ${connStatus === "success" ? styles.msgSuccess : styles.msgError}`}>
+              {connMessage}
             </div>
           )}
         </div>
 
-        {/* ── Save ── */}
-        <div className={styles.saveRow}>
-          <button
-            className={`${styles.btn} ${styles.btnSave}`}
-            onClick={handleSave}
-            disabled={!canSave || saveStatus === "loading"}
-          >
-            {saveStatus === "loading" ? "Saving…" : "Save Configuration"}
-          </button>
-          {saveMessage && (
-            <div className={`${styles.statusMessage} ${saveStatus === "success" ? styles.msgSuccess : styles.msgError}`}>
-              {saveMessage}
+        {/* ── Table (revealed after connection success) ── */}
+        {connStatus === "success" && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>Table</h3>
+
+            <div className={styles.configContainer}>
+              <div className={styles.infoContainerWrapper}>
+                <div className={styles.infoContainer}>
+                  <label htmlFor="sb-table">Table Name</label>
+                </div>
+                <div className={styles.inputContainer}>
+                  <input
+                    id="sb-table"
+                    type="text"
+                    value={tableName}
+                    onChange={(e) => {
+                      setTableName(e.target.value);
+                      setTableStatus("idle");
+                      setTableMessage("");
+                    }}
+                    placeholder="e.g. icsc_events"
+                    autoComplete="off"
+                    className={styles.fieldInput}
+                  />
+                </div>
+              </div>
+              <div className={styles.descriptionContainer}>
+                <p>Exact PostgreSQL table name from the <code>public</code> schema. Rows from this table populate the custom field dropdown.</p>
+              </div>
             </div>
-          )}
-        </div>
+
+            <button
+              className={`${styles.btn} ${styles.btnConnect}`}
+              onClick={handleSearchTable}
+              disabled={!canSearchTable || tableStatus === "loading"}
+            >
+              {tableStatus === "loading" ? "Searching…" : "Search Table"}
+            </button>
+
+            {tableStatus === "success" && (
+              <span className={styles.tableFoundText}>Table found</span>
+            )}
+            {tableStatus === "error" && tableMessage && (
+              <div className={`${styles.statusMessage} ${styles.msgError}`}>
+                {tableMessage}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

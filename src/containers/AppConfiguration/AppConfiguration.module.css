@@ -307,3 +307,11 @@
   gap: 0.875rem;
   width: 31.9375rem;
 }
+
+/* ── Table found indicator ── */
+.tableFoundText {
+  color: #059669;
+  font-family: Inter, sans-serif;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
